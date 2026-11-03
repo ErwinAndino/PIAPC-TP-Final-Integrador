@@ -8,7 +8,7 @@ Implementar BFS y A* sobre el grid del spec 001. Deben poder seleccionarse.
 - Implementación BFS.
 - Implementación A* con heurística Manhattan (o admisible simple).
 - Mecanismo para seleccionar algoritmo activo (desde código/UI simple).
-- Funciona sobre grid 10x10 con obstáculos.
+- Funciona sobre grid 30x30 con obstáculos.
 
 ## Fuera de alcance
 - Costes de terreno (ver spec 003)

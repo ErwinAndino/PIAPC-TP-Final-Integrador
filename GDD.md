@@ -52,7 +52,7 @@ Ambos sobre grid, seleccionables desde UI/prototipo para observar diferencias.
 - Todos los escenarios/plantillas deben ser jugables y permitir cumplir el objetivo (sobrevivir oleadas).
 
 ## Alcance recortado
-- Grid 10x10
+- Grid 30x30
 - 2 Aliados
 - 2-3 Enemigos
 - Pocos recursos
