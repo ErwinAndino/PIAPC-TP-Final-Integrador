@@ -7,6 +7,7 @@ namespace DefendAndCollect.Grid
     public sealed class GameGrid
     {
         private readonly bool[] blocked;
+        private readonly TerrainType[] terrain;
 
         public int Width { get; }
 
@@ -29,6 +30,7 @@ namespace DefendAndCollect.Grid
             Width = width;
             Height = height;
             blocked = new bool[width * height];
+            terrain = new TerrainType[width * height];
         }
 
         public int BlockedCount
@@ -91,6 +93,31 @@ namespace DefendAndCollect.Grid
             blocked[Index(cell)] = value;
         }
 
+        public TerrainType GetTerrain(Vector2Int cell)
+        {
+            if (!IsInBounds(cell))
+            {
+                throw new ArgumentOutOfRangeException(nameof(cell), cell, "Cell is outside the grid.");
+            }
+
+            return terrain[Index(cell)];
+        }
+
+        public void SetTerrain(Vector2Int cell, TerrainType value)
+        {
+            if (!IsInBounds(cell))
+            {
+                throw new ArgumentOutOfRangeException(nameof(cell), cell, "Cell is outside the grid.");
+            }
+
+            if (value != TerrainType.Normal && value != TerrainType.Slow)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown terrain type.");
+            }
+
+            terrain[Index(cell)] = value;
+        }
+
         public Vector3 CellToWorld(Vector2Int cell)
         {
             return new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f);
@@ -101,7 +128,11 @@ namespace DefendAndCollect.Grid
             return new Vector2Int(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y));
         }
 
-        public static GameGrid FromRows(string[] rows, char blockedChar = '#', char passableChar = '.')
+        public static GameGrid FromRows(
+            string[] rows,
+            char blockedChar = '#',
+            char passableChar = '.',
+            char slowChar = '~')
         {
             if (rows == null || rows.Length == 0)
             {
@@ -132,6 +163,10 @@ namespace DefendAndCollect.Grid
                     if (value == blockedChar)
                     {
                         grid.SetBlocked(cell, true);
+                    }
+                    else if (value == slowChar)
+                    {
+                        grid.SetTerrain(cell, TerrainType.Slow);
                     }
                     else if (value != passableChar)
                     {

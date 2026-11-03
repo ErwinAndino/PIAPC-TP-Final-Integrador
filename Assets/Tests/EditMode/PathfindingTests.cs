@@ -176,6 +176,90 @@ namespace DefendAndCollect.Tests.EditMode
             }
         }
 
+        [Test]
+        public void AStar_UsesTerrainCosts_WhenTerrainModeSelected()
+        {
+            GameGrid grid = CreateTerrainCorridorGrid();
+            Vector2Int start = new Vector2Int(0, 1);
+            Vector2Int end = new Vector2Int(4, 1);
+            AStarPathfinder pathfinder = new AStarPathfinder();
+
+            IReadOnlyList<Vector2Int> uniform = pathfinder.GetPath(grid, start, end, NavigationMode.UniformCost);
+            IReadOnlyList<Vector2Int> terrain = pathfinder.GetPath(grid, start, end, NavigationMode.TerrainCost);
+
+            Assert.That(uniform.Count, Is.EqualTo(5));
+            Assert.That(terrain.Count, Is.GreaterThan(uniform.Count));
+            Assert.That(PathCost(grid, uniform, NavigationMode.UniformCost), Is.EqualTo(4));
+            Assert.That(PathCost(grid, uniform, NavigationMode.TerrainCost), Is.EqualTo(7));
+            Assert.That(PathCost(grid, terrain, NavigationMode.TerrainCost), Is.EqualTo(6));
+            CollectionAssert.AreNotEqual(uniform, terrain);
+
+            AssertPathIsValid(grid, uniform, start, end);
+            AssertPathIsValid(grid, terrain, start, end);
+        }
+
+        [Test]
+        public void Bfs_IgnoresTerrainCosts()
+        {
+            GameGrid grid = CreateTerrainCorridorGrid();
+            Vector2Int start = new Vector2Int(0, 1);
+            Vector2Int end = new Vector2Int(4, 1);
+            BfsPathfinder pathfinder = new BfsPathfinder();
+
+            IReadOnlyList<Vector2Int> uniform = pathfinder.GetPath(grid, start, end, NavigationMode.UniformCost);
+            IReadOnlyList<Vector2Int> terrain = pathfinder.GetPath(grid, start, end, NavigationMode.TerrainCost);
+
+            CollectionAssert.AreEqual(uniform, terrain);
+            Assert.That(uniform.Count, Is.EqualTo(5));
+            AssertPathIsValid(grid, uniform, start, end);
+        }
+
+        [Test]
+        public void AStar_DefaultLayout_ChangesPathWithNavigationMode()
+        {
+            GameGrid grid = DefaultGridLayout.Create();
+            Vector2Int start = new Vector2Int(0, 0);
+            Vector2Int end = new Vector2Int(grid.Width - 1, grid.Height - 1);
+            AStarPathfinder pathfinder = new AStarPathfinder();
+
+            IReadOnlyList<Vector2Int> uniform = pathfinder.GetPath(grid, start, end, NavigationMode.UniformCost);
+            IReadOnlyList<Vector2Int> terrain = pathfinder.GetPath(grid, start, end, NavigationMode.TerrainCost);
+
+            int uniformCostUnderTerrain = PathCost(grid, uniform, NavigationMode.TerrainCost);
+            int terrainCost = PathCost(grid, terrain, NavigationMode.TerrainCost);
+
+            Assert.That(terrainCost, Is.LessThan(uniformCostUnderTerrain));
+            CollectionAssert.AreNotEqual(uniform, terrain);
+            AssertPathIsValid(grid, uniform, start, end);
+            AssertPathIsValid(grid, terrain, start, end);
+        }
+
+        private static GameGrid CreateTerrainCorridorGrid()
+        {
+            GameGrid grid = new GameGrid(5, 3);
+
+            for (int x = 1; x <= 3; x++)
+            {
+                grid.SetTerrain(new Vector2Int(x, 1), TerrainType.Slow);
+            }
+
+            return grid;
+        }
+
+        private static int PathCost(GameGrid grid, IReadOnlyList<Vector2Int> path, NavigationMode mode)
+        {
+            int total = 0;
+
+            for (int i = 1; i < path.Count; i++)
+            {
+                bool slow = mode == NavigationMode.TerrainCost
+                    && grid.GetTerrain(path[i]) == TerrainType.Slow;
+                total += slow ? 2 : 1;
+            }
+
+            return total;
+        }
+
         private static void AssertPathIsValid(
             GameGrid grid,
             IReadOnlyList<Vector2Int> path,

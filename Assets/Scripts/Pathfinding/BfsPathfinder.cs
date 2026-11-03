@@ -7,7 +7,11 @@ namespace DefendAndCollect.Pathfinding
 {
     public sealed class BfsPathfinder : IPathfinder
     {
-        public IReadOnlyList<Vector2Int> GetPath(GameGrid grid, Vector2Int start, Vector2Int end)
+        public IReadOnlyList<Vector2Int> GetPath(
+            GameGrid grid,
+            Vector2Int start,
+            Vector2Int end,
+            NavigationMode mode = NavigationMode.UniformCost)
         {
             if (grid == null)
             {

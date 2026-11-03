@@ -111,6 +111,69 @@ namespace DefendAndCollect.Tests.EditMode
         }
 
         [Test]
+        public void NewGrid_DefaultsToNormalTerrain()
+        {
+            GameGrid grid = new GameGrid(4, 4);
+            Vector2Int cell = new Vector2Int(2, 3);
+
+            Assert.That(grid.GetTerrain(cell), Is.EqualTo(TerrainType.Normal));
+        }
+
+        [Test]
+        public void SetTerrain_ChangesTerrain()
+        {
+            GameGrid grid = new GameGrid(5, 5);
+            Vector2Int cell = new Vector2Int(1, 4);
+
+            grid.SetTerrain(cell, TerrainType.Slow);
+
+            Assert.That(grid.GetTerrain(cell), Is.EqualTo(TerrainType.Slow));
+
+            grid.SetTerrain(cell, TerrainType.Normal);
+
+            Assert.That(grid.GetTerrain(cell), Is.EqualTo(TerrainType.Normal));
+        }
+
+        [Test]
+        public void SetTerrain_OutOfBounds_Throws()
+        {
+            GameGrid grid = new GameGrid(5, 5);
+
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => grid.SetTerrain(new Vector2Int(-1, 0), TerrainType.Slow));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => grid.GetTerrain(new Vector2Int(5, 0)));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => grid.SetTerrain(new Vector2Int(0, 0), (TerrainType)99));
+        }
+
+        [Test]
+        public void FromRows_ParsesSlowTerrain()
+        {
+            string[] rows =
+            {
+                "~.#",
+                "..~"
+            };
+
+            GameGrid grid = GameGrid.FromRows(rows);
+
+            Assert.That(grid.GetTerrain(new Vector2Int(0, 1)), Is.EqualTo(TerrainType.Slow));
+            Assert.That(grid.GetTerrain(new Vector2Int(2, 0)), Is.EqualTo(TerrainType.Slow));
+            Assert.That(grid.IsBlocked(new Vector2Int(2, 1)), Is.True);
+            Assert.That(grid.GetTerrain(new Vector2Int(0, 0)), Is.EqualTo(TerrainType.Normal));
+        }
+
+        [Test]
+        public void DefaultLayout_ContainsSlowTerrain()
+        {
+            GameGrid grid = DefaultGridLayout.Create();
+
+            Assert.That(grid.GetTerrain(new Vector2Int(13, 0)), Is.EqualTo(TerrainType.Slow));
+            Assert.That(grid.IsPassable(new Vector2Int(13, 0)), Is.True);
+        }
+
+        [Test]
         public void CellToWorld_AndWorldToCell_RoundTrip()
         {
             GameGrid grid = new GameGrid(30, 30);

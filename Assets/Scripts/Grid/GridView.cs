@@ -8,6 +8,7 @@ namespace DefendAndCollect.Grid
         [SerializeField] private Color passableColor = new Color(0.36f, 0.55f, 0.38f, 1f);
         [SerializeField] private Color passableAlternateColor = new Color(0.31f, 0.49f, 0.33f, 1f);
         [SerializeField] private Color blockedColor = new Color(0.55f, 0.16f, 0.16f, 1f);
+        [SerializeField] private Color slowColor = new Color(0.62f, 0.48f, 0.2f, 1f);
         [SerializeField] private float tileScale = 0.94f;
 
         private static Sprite sharedTileSprite;
@@ -20,6 +21,8 @@ namespace DefendAndCollect.Grid
         public int TileCount => tileRenderers.Count;
 
         public Color BlockedColor => blockedColor;
+
+        public Color SlowColor => slowColor;
 
         public Color PassableColor => passableColor;
 
@@ -87,6 +90,11 @@ namespace DefendAndCollect.Grid
             if (!grid.IsPassable(cell))
             {
                 return blockedColor;
+            }
+
+            if (grid.GetTerrain(cell) == TerrainType.Slow)
+            {
+                return slowColor;
             }
 
             return (cell.x + cell.y) % 2 == 0 ? passableColor : passableAlternateColor;

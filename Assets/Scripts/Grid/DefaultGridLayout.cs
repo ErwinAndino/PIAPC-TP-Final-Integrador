@@ -15,6 +15,7 @@ namespace DefendAndCollect.Grid
             FillHorizontal(grid, 18, 18, 27);
             FillRectangle(grid, 23, 7, 2, 3);
             FillHorizontal(grid, 14, 4, 12);
+            FillTerrain(grid, 13, 0, 10, 6, TerrainType.Slow);
 
             return grid;
         }
@@ -42,6 +43,28 @@ namespace DefendAndCollect.Grid
                 for (int x = startX; x < startX + width; x++)
                 {
                     grid.SetBlocked(new Vector2Int(x, y), true);
+                }
+            }
+        }
+
+        private static void FillTerrain(
+            GameGrid grid,
+            int startX,
+            int startY,
+            int width,
+            int height,
+            TerrainType terrain)
+        {
+            for (int y = startY; y < startY + height; y++)
+            {
+                for (int x = startX; x < startX + width; x++)
+                {
+                    Vector2Int cell = new Vector2Int(x, y);
+
+                    if (grid.IsPassable(cell))
+                    {
+                        grid.SetTerrain(cell, terrain);
+                    }
                 }
             }
         }

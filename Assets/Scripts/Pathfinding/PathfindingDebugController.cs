@@ -8,14 +8,16 @@ namespace DefendAndCollect.Pathfinding
     public sealed class PathfindingDebugController : MonoBehaviour
     {
         [SerializeField] private PathfindingAlgorithm algorithm = PathfindingAlgorithm.Bfs;
+        [SerializeField] private NavigationMode navigationMode = NavigationMode.UniformCost;
         [SerializeField] private Color pathColor = new Color(1f, 0.82f, 0.2f, 1f);
         [SerializeField] private Color startColor = new Color(0.2f, 1f, 0.35f, 1f);
         [SerializeField] private Color endColor = new Color(0.2f, 0.6f, 1f, 1f);
         [SerializeField] private bool allowObstacleToggle = true;
+        [SerializeField] private bool allowTerrainToggle = true;
 
         private static Sprite sharedMarkerSprite;
 
-        private readonly Rect panelRect = new Rect(12f, 40f, 400f, 205f);
+        private readonly Rect panelRect = new Rect(12f, 40f, 430f, 330f);
         private readonly List<GameObject> markers = new List<GameObject>();
 
         private GridView gridView;
@@ -47,27 +49,29 @@ namespace DefendAndCollect.Pathfinding
 
         private void Update()
         {
-            if (grid == null)
+            if (grid == null || IsPointerOverPanel())
             {
                 return;
             }
 
-            if (!IsPointerOverPanel())
+            if (Input.GetMouseButtonDown(0) && TryGetHoveredCell(out Vector2Int startHover))
             {
-                if (Input.GetMouseButtonDown(0) && TryGetHoveredCell(out Vector2Int startHover))
-                {
-                    TrySetStart(startHover);
-                }
+                TrySetStart(startHover);
+            }
 
-                if (Input.GetMouseButtonDown(1) && TryGetHoveredCell(out Vector2Int endHover))
-                {
-                    TrySetEnd(endHover);
-                }
+            if (Input.GetMouseButtonDown(1) && TryGetHoveredCell(out Vector2Int endHover))
+            {
+                TrySetEnd(endHover);
             }
 
             if (allowObstacleToggle && Input.GetKeyDown(KeyCode.O) && TryGetHoveredCell(out Vector2Int obstacleHover))
             {
                 ToggleObstacle(obstacleHover);
+            }
+
+            if (allowTerrainToggle && Input.GetKeyDown(KeyCode.T) && TryGetHoveredCell(out Vector2Int terrainHover))
+            {
+                ToggleTerrain(terrainHover);
             }
         }
 
@@ -76,7 +80,7 @@ namespace DefendAndCollect.Pathfinding
             GUI.Box(panelRect, GUIContent.none);
             GUILayout.BeginArea(new Rect(panelRect.x + 8f, panelRect.y + 6f, panelRect.width - 16f, panelRect.height - 12f));
 
-            GUILayout.Label("Pathfinding (spec 002)");
+            GUILayout.Label("Pathfinding (spec 002) + navegación (spec 003)");
 
             GUILayout.BeginHorizontal();
             Color previousColor = GUI.backgroundColor;
@@ -96,9 +100,35 @@ namespace DefendAndCollect.Pathfinding
             GUILayout.EndHorizontal();
 
             GUILayout.Label($"Algoritmo activo: {AlgorithmName}");
+
+            GUILayout.BeginHorizontal();
+            previousColor = GUI.backgroundColor;
+            GUI.backgroundColor = navigationMode == NavigationMode.UniformCost ? new Color(0.45f, 0.9f, 0.45f) : Color.white;
+            if (GUILayout.Button("Costes iguales"))
+            {
+                SelectNavigationMode(NavigationMode.UniformCost);
+            }
+
+            GUI.backgroundColor = navigationMode == NavigationMode.TerrainCost ? new Color(0.45f, 0.9f, 0.45f) : Color.white;
+            if (GUILayout.Button("Costes de terreno"))
+            {
+                SelectNavigationMode(NavigationMode.TerrainCost);
+            }
+
+            GUI.backgroundColor = previousColor;
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label($"Navegación activa: {NavigationModeName}");
+            GUILayout.Label("Verde: normal | Marrón: lento | Rojo: obstáculo");
+
+            if (algorithm == PathfindingAlgorithm.Bfs)
+            {
+                GUILayout.Label("BFS ignora los costes: siempre minimiza la cantidad de pasos.");
+            }
+
             GUILayout.Label(statusMessage);
             GUILayout.Label("Clic izquierdo: inicio | Clic derecho: fin");
-            GUILayout.Label("O: alternar obstáculo bajo el cursor");
+            GUILayout.Label("O: alternar obstáculo | T: alternar terreno lento");
 
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Recalcular"))
@@ -123,9 +153,19 @@ namespace DefendAndCollect.Pathfinding
 
         private string AlgorithmName => algorithm == PathfindingAlgorithm.Bfs ? "BFS" : "A*";
 
+        private string NavigationModeName => navigationMode == NavigationMode.UniformCost
+            ? "Costes iguales"
+            : "Costes de terreno";
+
         private void SelectAlgorithm(PathfindingAlgorithm selectedAlgorithm)
         {
             algorithm = selectedAlgorithm;
+            RecalculatePath();
+        }
+
+        private void SelectNavigationMode(NavigationMode selectedMode)
+        {
+            navigationMode = selectedMode;
             RecalculatePath();
         }
 
@@ -186,6 +226,30 @@ namespace DefendAndCollect.Pathfinding
             statusMessage = $"{action} {statusMessage}";
         }
 
+        private void ToggleTerrain(Vector2Int cell)
+        {
+            if (!grid.IsPassable(cell))
+            {
+                statusMessage = "No se puede pintar terreno lento en un obstáculo.";
+                return;
+            }
+
+            bool nextSlow = grid.GetTerrain(cell) != TerrainType.Slow;
+            grid.SetTerrain(cell, nextSlow ? TerrainType.Slow : TerrainType.Normal);
+
+            if (gridView != null)
+            {
+                gridView.RefreshTile(cell);
+            }
+
+            string action = nextSlow
+                ? $"Terreno lento colocado en ({cell.x}, {cell.y})."
+                : $"Terreno lento quitado en ({cell.x}, {cell.y}).";
+
+            RecalculatePath();
+            statusMessage = $"{action} {statusMessage}";
+        }
+
         private void RecalculatePath()
         {
             if (grid == null)
@@ -204,11 +268,12 @@ namespace DefendAndCollect.Pathfinding
             }
 
             IPathfinder pathfinder = PathfinderFactory.Create(algorithm);
-            currentPath = pathfinder.GetPath(grid, startCell.Value, endCell.Value);
+            currentPath = pathfinder.GetPath(grid, startCell.Value, endCell.Value, navigationMode);
+            int pathCost = PathfindingSupport.PathCost(grid, currentPath, navigationMode);
 
             statusMessage = currentPath.Count == 0
-                ? $"{AlgorithmName}: sin ruta."
-                : $"{AlgorithmName}: {currentPath.Count} tiles.";
+                ? $"{AlgorithmName} + {NavigationModeName}: sin ruta."
+                : $"{AlgorithmName} + {NavigationModeName}: {currentPath.Count} tiles | costo {pathCost}.";
 
             RebuildMarkers();
         }

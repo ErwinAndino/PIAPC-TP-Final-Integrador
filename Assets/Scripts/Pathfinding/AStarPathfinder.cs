@@ -7,7 +7,11 @@ namespace DefendAndCollect.Pathfinding
 {
     public sealed class AStarPathfinder : IPathfinder
     {
-        public IReadOnlyList<Vector2Int> GetPath(GameGrid grid, Vector2Int start, Vector2Int end)
+        public IReadOnlyList<Vector2Int> GetPath(
+            GameGrid grid,
+            Vector2Int start,
+            Vector2Int end,
+            NavigationMode mode = NavigationMode.UniformCost)
         {
             if (grid == null)
             {
@@ -77,7 +81,7 @@ namespace DefendAndCollect.Pathfinding
                         continue;
                     }
 
-                    int tentativeCost = currentCost + 1;
+                    int tentativeCost = currentCost + PathfindingSupport.MovementCost(grid, neighbor, mode);
                     if (tentativeCost >= costSoFar[neighborIndex])
                     {
                         continue;

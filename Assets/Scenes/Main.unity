@@ -179,10 +179,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   algorithm: 0
+  navigationMode: 0
   pathColor: {r: 1, g: 0.82, b: 0.2, a: 1}
   startColor: {r: 0.2, g: 1, b: 0.35, a: 1}
   endColor: {r: 0.2, g: 0.6, b: 1, a: 1}
   allowObstacleToggle: 1
+  allowTerrainToggle: 1
 --- !u!1 &978047918
 GameObject:
   m_ObjectHideFlags: 0
