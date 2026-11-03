@@ -8,7 +8,7 @@ Cada spec es un archivo independiente en este directorio; el orden sugerido resp
 | # | Spec | Tema | Depende de | Estado |
 |---|------|------|------------|--------|
 | 001 | [Grid básico](spec-001-grid-basico.md) | Grid 30x30 y tiles transitables | — | Hecha |
-| 002 | [Pathfinding base](spec-002-pathfinding-base.md) | BFS y A* seleccionables | 001 | Pendiente |
+| 002 | [Pathfinding base](spec-002-pathfinding-base.md) | BFS y A* seleccionables | 001 | Hecha |
 | 003 | [Navegación con costes](spec-003-navegacion-costes.md) | Costes de terreno seleccionables | 001, 002 | Pendiente |
 | 004 | [FSM para NPCs](spec-004-fsm-npcs.md) | Máquina de estados base | 002 | Pendiente |
 | 005 | [Percepción y objetivos](spec-005-percepcion-objetivos.md) | Detección por radio y priorización | 004 | Pendiente |

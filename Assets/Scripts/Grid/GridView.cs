@@ -50,6 +50,26 @@ namespace DefendAndCollect.Grid
             }
         }
 
+        public void RefreshTile(Vector2Int cell)
+        {
+            if (Grid == null || tilesRoot == null || !Grid.IsInBounds(cell))
+            {
+                return;
+            }
+
+            Transform tile = tilesRoot.Find($"Tile_{cell.x}_{cell.y}");
+            if (tile == null)
+            {
+                return;
+            }
+
+            SpriteRenderer tileRenderer = tile.GetComponent<SpriteRenderer>();
+            if (tileRenderer != null)
+            {
+                tileRenderer.color = GetTileColor(Grid, cell);
+            }
+        }
+
         public void Clear()
         {
             if (tilesRoot != null)

@@ -1,5 +1,6 @@
 using System.Linq;
 using DefendAndCollect.Grid;
+using DefendAndCollect.Pathfinding;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -19,6 +20,7 @@ namespace DefendAndCollect.Tests.EditMode
                 GameObject gameRoot = scene.GetRootGameObjects().Single(go => go.name == "GameRoot");
 
                 Assert.That(gameRoot.GetComponent<GridBootstrap>(), Is.Not.Null);
+                Assert.That(gameRoot.GetComponent<PathfindingDebugController>(), Is.Not.Null);
             }
             finally
             {

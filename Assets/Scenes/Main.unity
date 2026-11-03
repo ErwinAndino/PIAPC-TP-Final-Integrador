@@ -129,6 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 205495979}
   - component: {fileID: 205495980}
+  - component: {fileID: 205495981}
   m_Layer: 0
   m_Name: GameRoot
   m_TagString: Untagged
@@ -165,6 +166,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   frameCamera: 1
   cameraPadding: 1.5
+--- !u!114 &205495981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 205495978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 137d291426594d39acfabb5c4544a973, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  algorithm: 0
+  pathColor: {r: 1, g: 0.82, b: 0.2, a: 1}
+  startColor: {r: 0.2, g: 1, b: 0.35, a: 1}
+  endColor: {r: 0.2, g: 0.6, b: 1, a: 1}
+  allowObstacleToggle: 1
 --- !u!1 &978047918
 GameObject:
   m_ObjectHideFlags: 0
