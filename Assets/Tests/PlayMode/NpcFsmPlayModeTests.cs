@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using DefendAndCollect.Agents;
 using DefendAndCollect.Grid;
+using DefendAndCollect.World;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -19,7 +20,7 @@ namespace DefendAndCollect.Tests.PlayMode
             ally.Configure(
                 grid,
                 new Vector2Int(0, 0),
-                new[] { new Vector2Int(4, 0) },
+                new[] { new ResourceNode(new Vector2Int(4, 0)) },
                 new Vector2Int(0, 2),
                 16f);
             ally.enabled = false;
@@ -52,7 +53,7 @@ namespace DefendAndCollect.Tests.PlayMode
             ally.Configure(
                 grid,
                 new Vector2Int(3, 0),
-                new[] { new Vector2Int(3, 0) },
+                new[] { new ResourceNode(new Vector2Int(3, 0)) },
                 new Vector2Int(3, 0),
                 1f);
             ally.enabled = false;
@@ -98,6 +99,8 @@ namespace DefendAndCollect.Tests.PlayMode
 
             Assert.That(demo.AllyCount, Is.EqualTo(2));
             Assert.That(demo.EnemyCount, Is.EqualTo(3));
+            Assert.That(demo.Resources, Is.Not.Empty);
+            Assert.That(demo.DetectionRadius, Is.EqualTo(6f));
 
             for (int i = 0; i < demo.Allies.Count; i++)
             {

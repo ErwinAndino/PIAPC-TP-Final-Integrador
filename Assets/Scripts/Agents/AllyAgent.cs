@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using DefendAndCollect.FSM;
 using DefendAndCollect.Grid;
 using DefendAndCollect.Pathfinding;
+using DefendAndCollect.World;
 using UnityEngine;
 
 namespace DefendAndCollect.Agents
@@ -20,15 +21,16 @@ namespace DefendAndCollect.Agents
         private const float IdleDuration = 0.5f;
         private const float CollectDuration = 1.2f;
         private const float RetryDuration = 1f;
+        private const float PerceptionInterval = 0.25f;
 
-        private readonly List<Vector2Int> resourceCells = new List<Vector2Int>();
+        private readonly List<ResourceNode> resources = new List<ResourceNode>();
 
         private StateMachine<AllyState, AllyAgent> stateMachine;
-        private int resourceIndex;
-        private Vector2Int currentResource;
+        private ResourceNode currentResource;
         private Vector2Int depositCell;
         private float collectElapsed;
         private float retryElapsed;
+        private float perceptionElapsed;
 
         public AllyState CurrentState => stateMachine != null && stateMachine.CurrentState.HasValue
             ? stateMachine.CurrentState.Value
@@ -36,23 +38,26 @@ namespace DefendAndCollect.Agents
 
         public override string CurrentStateName => CurrentState.ToString();
 
-        public IReadOnlyList<Vector2Int> ResourceCells => resourceCells;
+        public IReadOnlyList<ResourceNode> Resources => resources;
 
         public Vector2Int DepositCell => depositCell;
 
-        public Vector2Int CurrentResource => currentResource;
+        public ResourceNode CurrentResource => currentResource;
+
+        public bool HasResource => currentResource != null && currentResource.IsAvailable;
 
         public int CollectCount { get; private set; }
 
         public void Configure(
             GameGrid grid,
             Vector2Int startCell,
-            IReadOnlyList<Vector2Int> resources,
+            IReadOnlyList<ResourceNode> resourceNodes,
             Vector2Int deposit,
             float speed = 3.5f,
             PathfindingAlgorithm algorithm = PathfindingAlgorithm.AStar,
             NavigationMode mode = NavigationMode.UniformCost,
-            Color? color = null)
+            Color? color = null,
+            float detectionRadius = 6f)
         {
             if (grid == null)
             {
@@ -64,21 +69,30 @@ namespace DefendAndCollect.Agents
                 throw new ArgumentOutOfRangeException(nameof(deposit), deposit, "Deposit cell must be passable.");
             }
 
-            resourceCells.Clear();
+            resources.Clear();
 
-            if (resources != null)
+            if (resourceNodes != null)
             {
-                for (int i = 0; i < resources.Count; i++)
+                for (int i = 0; i < resourceNodes.Count; i++)
                 {
-                    if (grid.IsPassable(resources[i]))
+                    ResourceNode node = resourceNodes[i];
+
+                    if (node != null && grid.IsPassable(node.Cell))
                     {
-                        resourceCells.Add(resources[i]);
+                        resources.Add(node);
                     }
                 }
             }
 
             depositCell = deposit;
-            base.Initialize(grid, startCell, speed, algorithm, mode, color ?? new Color(0.35f, 1f, 0.45f, 1f));
+            base.Initialize(
+                grid,
+                startCell,
+                speed,
+                algorithm,
+                mode,
+                color ?? new Color(0.35f, 1f, 0.45f, 1f),
+                detectionRadius);
         }
 
         protected override void OnConfigured()
@@ -107,26 +121,40 @@ namespace DefendAndCollect.Agents
             stateMachine?.ChangeState(nextState);
         }
 
-        private bool TrySelectNextResource()
+        private bool TrySelectResource()
         {
-            if (resourceCells.Count == 0)
+            ResourceNode candidate = Perception.FindNearest(
+                Cell,
+                resources,
+                node => node.Cell,
+                DetectionRadius,
+                node => node.IsAvailable && Grid != null && Grid.IsPassable(node.Cell));
+
+            if (candidate == null)
             {
+                currentResource = null;
                 return false;
             }
 
-            for (int attempt = 0; attempt < resourceCells.Count; attempt++)
+            if (!MoveTo(candidate.Cell))
             {
-                Vector2Int candidate = resourceCells[resourceIndex % resourceCells.Count];
-                resourceIndex = (resourceIndex + 1) % resourceCells.Count;
-
-                if (MoveTo(candidate))
-                {
-                    currentResource = candidate;
-                    return true;
-                }
+                currentResource = null;
+                return false;
             }
 
-            return false;
+            currentResource = candidate;
+            return true;
+        }
+
+        private void DropInvalidResource()
+        {
+            if (currentResource == null || currentResource.IsAvailable)
+            {
+                return;
+            }
+
+            currentResource = null;
+            Stop();
         }
 
         private bool TryGoToDeposit()
@@ -142,6 +170,7 @@ namespace DefendAndCollect.Agents
             {
                 elapsed = 0f;
                 context.Stop();
+                context.currentResource = null;
             }
 
             public void Exit(AllyAgent context)
@@ -151,6 +180,18 @@ namespace DefendAndCollect.Agents
             public void Tick(AllyAgent context, float deltaTime)
             {
                 elapsed += deltaTime;
+                context.perceptionElapsed += deltaTime;
+
+                if (context.perceptionElapsed >= PerceptionInterval)
+                {
+                    context.perceptionElapsed = 0f;
+
+                    if (context.TrySelectResource())
+                    {
+                        context.TransitionTo(AllyState.SeekResource);
+                        return;
+                    }
+                }
 
                 if (elapsed >= IdleDuration)
                 {
@@ -164,7 +205,11 @@ namespace DefendAndCollect.Agents
             public void Enter(AllyAgent context)
             {
                 context.retryElapsed = 0f;
-                context.TrySelectNextResource();
+
+                if (!context.HasResource)
+                {
+                    context.TrySelectResource();
+                }
             }
 
             public void Exit(AllyAgent context)
@@ -173,30 +218,41 @@ namespace DefendAndCollect.Agents
 
             public void Tick(AllyAgent context, float deltaTime)
             {
-                if (context.IsMoving)
+                context.DropInvalidResource();
+
+                if (context.HasResource)
+                {
+                    if (context.IsMoving)
+                    {
+                        return;
+                    }
+
+                    if (context.HasArrived)
+                    {
+                        context.TransitionTo(AllyState.Collect);
+                        return;
+                    }
+
+                    context.retryElapsed += deltaTime;
+
+                    if (context.retryElapsed >= RetryDuration)
+                    {
+                        context.retryElapsed = 0f;
+                        context.TrySelectResource();
+                    }
+
+                    return;
+                }
+
+                context.perceptionElapsed += deltaTime;
+
+                if (context.perceptionElapsed < PerceptionInterval)
                 {
                     return;
                 }
 
-                if (context.HasArrived)
-                {
-                    context.TransitionTo(AllyState.Collect);
-                    return;
-                }
-
-                context.retryElapsed += deltaTime;
-
-                if (context.retryElapsed < RetryDuration)
-                {
-                    return;
-                }
-
-                context.retryElapsed = 0f;
-
-                if (!context.TrySelectNextResource())
-                {
-                    context.TransitionTo(AllyState.Idle);
-                }
+                context.perceptionElapsed = 0f;
+                context.TrySelectResource();
             }
         }
 
@@ -214,6 +270,13 @@ namespace DefendAndCollect.Agents
 
             public void Tick(AllyAgent context, float deltaTime)
             {
+                if (context.currentResource == null || !context.currentResource.IsAvailable)
+                {
+                    context.currentResource = null;
+                    context.TransitionTo(AllyState.SeekResource);
+                    return;
+                }
+
                 context.collectElapsed += deltaTime;
 
                 if (context.collectElapsed < CollectDuration)
@@ -221,6 +284,8 @@ namespace DefendAndCollect.Agents
                     return;
                 }
 
+                context.currentResource.MarkTaken();
+                context.currentResource = null;
                 context.CollectCount++;
                 context.TransitionTo(AllyState.TransportToDeposit);
             }

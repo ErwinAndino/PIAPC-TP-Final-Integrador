@@ -21,15 +21,16 @@ namespace DefendAndCollect.Agents
         private const float SeekDuration = 0.25f;
         private const float AttackDuration = 1f;
         private const float RepathInterval = 0.2f;
+        private const float PerceptionInterval = 0.25f;
         private const int AttackRange = 1;
 
         private readonly List<AllyAgent> allies = new List<AllyAgent>();
 
         private StateMachine<EnemyState, EnemyAgent> stateMachine;
-        private int allyIndex;
         private AllyAgent target;
         private float stateElapsed;
         private float repathElapsed;
+        private float perceptionElapsed;
 
         public EnemyState CurrentState => stateMachine != null && stateMachine.CurrentState.HasValue
             ? stateMachine.CurrentState.Value
@@ -50,7 +51,8 @@ namespace DefendAndCollect.Agents
             float speed = 3f,
             PathfindingAlgorithm algorithm = PathfindingAlgorithm.AStar,
             NavigationMode mode = NavigationMode.UniformCost,
-            Color? color = null)
+            Color? color = null,
+            float detectionRadius = 6f)
         {
             allies.Clear();
 
@@ -65,7 +67,14 @@ namespace DefendAndCollect.Agents
                 }
             }
 
-            base.Initialize(grid, startCell, speed, algorithm, mode, color ?? new Color(1f, 0.3f, 0.3f, 1f));
+            base.Initialize(
+                grid,
+                startCell,
+                speed,
+                algorithm,
+                mode,
+                color ?? new Color(1f, 0.3f, 0.3f, 1f),
+                detectionRadius);
         }
 
         protected override void OnConfigured()
@@ -79,11 +88,13 @@ namespace DefendAndCollect.Agents
             stateMachine?.Tick(deltaTime);
         }
 
+        private bool HasValidTarget => target != null && target.IsTargetable;
+
         private bool IsTargetInRange
         {
             get
             {
-                if (target == null)
+                if (!HasValidTarget)
                 {
                     return false;
                 }
@@ -107,33 +118,21 @@ namespace DefendAndCollect.Agents
             stateMachine?.ChangeState(nextState);
         }
 
-        private bool TrySelectNextAlly()
+        private bool TryAcquireTarget()
         {
-            if (allies.Count == 0)
-            {
-                target = null;
-                return false;
-            }
+            target = Perception.FindNearest(
+                Cell,
+                allies,
+                ally => ally.Cell,
+                DetectionRadius,
+                ally => ally.IsTargetable);
 
-            for (int attempt = 0; attempt < allies.Count; attempt++)
-            {
-                AllyAgent candidate = allies[allyIndex % allies.Count];
-                allyIndex = (allyIndex + 1) % allies.Count;
-
-                if (candidate != null && candidate.IsConfigured)
-                {
-                    target = candidate;
-                    return true;
-                }
-            }
-
-            target = null;
-            return false;
+            return target != null;
         }
 
         private void ChaseTarget()
         {
-            if (target == null)
+            if (!HasValidTarget)
             {
                 return;
             }
@@ -148,6 +147,7 @@ namespace DefendAndCollect.Agents
             public void Enter(EnemyAgent context)
             {
                 elapsed = 0f;
+                context.perceptionElapsed = 0f;
                 context.Stop();
             }
 
@@ -158,6 +158,18 @@ namespace DefendAndCollect.Agents
             public void Tick(EnemyAgent context, float deltaTime)
             {
                 elapsed += deltaTime;
+                context.perceptionElapsed += deltaTime;
+
+                if (context.perceptionElapsed >= PerceptionInterval)
+                {
+                    context.perceptionElapsed = 0f;
+
+                    if (context.TryAcquireTarget())
+                    {
+                        context.TransitionTo(EnemyState.SeekAlly);
+                        return;
+                    }
+                }
 
                 if (elapsed >= IdleDuration)
                 {
@@ -171,7 +183,8 @@ namespace DefendAndCollect.Agents
             public void Enter(EnemyAgent context)
             {
                 context.stateElapsed = 0f;
-                context.TrySelectNextAlly();
+                context.perceptionElapsed = 0f;
+                context.TryAcquireTarget();
             }
 
             public void Exit(EnemyAgent context)
@@ -181,15 +194,25 @@ namespace DefendAndCollect.Agents
             public void Tick(EnemyAgent context, float deltaTime)
             {
                 context.stateElapsed += deltaTime;
+                context.perceptionElapsed += deltaTime;
 
-                if (context.stateElapsed < SeekDuration)
+                if (context.perceptionElapsed >= PerceptionInterval)
                 {
-                    return;
+                    context.perceptionElapsed = 0f;
+
+                    if (!context.HasValidTarget)
+                    {
+                        context.TryAcquireTarget();
+                    }
                 }
 
-                if (context.target == null)
+                if (!context.HasValidTarget)
                 {
-                    context.TransitionTo(EnemyState.Idle);
+                    if (context.stateElapsed >= SeekDuration)
+                    {
+                        context.TransitionTo(EnemyState.Idle);
+                    }
+
                     return;
                 }
 
@@ -217,7 +240,7 @@ namespace DefendAndCollect.Agents
 
             public void Tick(EnemyAgent context, float deltaTime)
             {
-                if (context.target == null)
+                if (!context.HasValidTarget)
                 {
                     context.TransitionTo(EnemyState.SeekAlly);
                     return;
@@ -253,7 +276,7 @@ namespace DefendAndCollect.Agents
 
             public void Tick(EnemyAgent context, float deltaTime)
             {
-                if (context.target == null)
+                if (!context.HasValidTarget)
                 {
                     context.TransitionTo(EnemyState.SeekAlly);
                     return;

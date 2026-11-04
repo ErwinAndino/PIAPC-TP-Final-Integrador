@@ -15,6 +15,7 @@ namespace DefendAndCollect.Agents
         private bool hasDestination;
         private Vector2Int destinationCell;
         private float moveSpeed = 3f;
+        private float detectionRadius = 6f;
         private PathfindingAlgorithm pathfindingAlgorithm = PathfindingAlgorithm.AStar;
         private NavigationMode navigationMode = NavigationMode.UniformCost;
 
@@ -30,6 +31,14 @@ namespace DefendAndCollect.Agents
 
         public bool IsConfigured => Grid != null;
 
+        public bool IsTargetable => gameObject.activeInHierarchy && IsConfigured;
+
+        public float DetectionRadius
+        {
+            get => detectionRadius;
+            set => detectionRadius = Mathf.Max(0f, value);
+        }
+
         public abstract string CurrentStateName { get; }
 
         public event Action<NpcAgent> StateChanged;
@@ -40,7 +49,8 @@ namespace DefendAndCollect.Agents
             float speed,
             PathfindingAlgorithm algorithm = PathfindingAlgorithm.AStar,
             NavigationMode mode = NavigationMode.UniformCost,
-            Color? color = null)
+            Color? color = null,
+            float detectionRadius = 6f)
         {
             if (grid == null)
             {
@@ -55,6 +65,7 @@ namespace DefendAndCollect.Agents
             Grid = grid;
             Cell = startCell;
             moveSpeed = Mathf.Max(0.1f, speed);
+            DetectionRadius = detectionRadius;
             pathfindingAlgorithm = algorithm;
             navigationMode = mode;
             transform.position = grid.CellToWorld(startCell);
