@@ -21,6 +21,10 @@ namespace DefendAndCollect.Build
         private const int StructureSortingOrder = 6;
         private const int PreviewSortingOrder = 3;
 
+        public const float TowerRange = 4f;
+        public const float TowerDamage = 25f;
+        public const float TowerFireInterval = 1f;
+
         private static readonly Color WallColor = new Color(0.72f, 0.72f, 0.78f, 1f);
         private static readonly Color TowerColor = new Color(0.4f, 0.72f, 1f, 1f);
         private static readonly Color ValidPreviewColor = new Color(0.35f, 1f, 0.45f, 0.5f);
@@ -47,6 +51,8 @@ namespace DefendAndCollect.Build
         private StructureType selectedType = StructureType.Wall;
         private string statusMessage = "B: modo construcción | 1: muro | 2: torre";
         private bool buildMode;
+        private float towerFireElapsed;
+        private int towerAttackCount;
 
         public bool IsBuildMode => buildMode;
 
@@ -55,6 +61,8 @@ namespace DefendAndCollect.Build
         public int StructureCount => structures.Count;
 
         public string StatusMessage => statusMessage;
+
+        public int TowerAttackCount => towerAttackCount;
 
         public IReadOnlyDictionary<Vector2Int, StructureType> Structures => structures;
 
@@ -70,6 +78,8 @@ namespace DefendAndCollect.Build
             {
                 return;
             }
+
+            AdvanceCombat(Time.deltaTime);
 
             if (Input.GetKeyDown(KeyCode.B))
             {
@@ -235,6 +245,74 @@ namespace DefendAndCollect.Build
         {
             grid = newGrid;
             gridView = newGridView;
+        }
+
+        public void AdvanceCombat(float deltaTime)
+        {
+            if (grid == null || demo == null || deltaTime <= 0f)
+            {
+                return;
+            }
+
+            towerFireElapsed += deltaTime;
+
+            if (towerFireElapsed < TowerFireInterval)
+            {
+                return;
+            }
+
+            towerFireElapsed -= TowerFireInterval;
+
+            if (towerFireElapsed > TowerFireInterval)
+            {
+                towerFireElapsed = 0f;
+            }
+
+            foreach (KeyValuePair<Vector2Int, StructureType> structure in structures)
+            {
+                if (structure.Value != StructureType.Tower)
+                {
+                    continue;
+                }
+
+                EnemyAgent target = FindNearestEnemyInRange(structure.Key);
+
+                if (target == null)
+                {
+                    continue;
+                }
+
+                target.TakeDamage(TowerDamage);
+                towerAttackCount++;
+            }
+        }
+
+        private EnemyAgent FindNearestEnemyInRange(Vector2Int towerCell)
+        {
+            EnemyAgent nearest = null;
+            float nearestDistance = float.MaxValue;
+
+            for (int i = 0; i < demo.Enemies.Count; i++)
+            {
+                EnemyAgent enemy = demo.Enemies[i];
+
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                float distance = Perception.Distance(towerCell, enemy.Cell);
+
+                if (distance > TowerRange || distance >= nearestDistance)
+                {
+                    continue;
+                }
+
+                nearest = enemy;
+                nearestDistance = distance;
+            }
+
+            return nearest;
         }
 
         private void ResolveDependencies()

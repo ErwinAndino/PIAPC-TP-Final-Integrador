@@ -4,6 +4,7 @@ using DefendAndCollect.Build;
 using DefendAndCollect.Grid;
 using DefendAndCollect.Pathfinding;
 using DefendAndCollect.Scenarios;
+using DefendAndCollect.Waves;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -27,6 +28,8 @@ namespace DefendAndCollect.Tests.EditMode
                 Assert.That(gameRoot.GetComponent<FsmDemoBootstrap>(), Is.Not.Null);
                 Assert.That(gameRoot.GetComponent<BuildController>(), Is.Not.Null);
                 Assert.That(gameRoot.GetComponent<ScenarioController>(), Is.Not.Null);
+                Assert.That(gameRoot.GetComponent<WaveController>(), Is.Not.Null);
+                Assert.That(gameRoot.GetComponent<MatchHud>(), Is.Not.Null);
             }
             finally
             {

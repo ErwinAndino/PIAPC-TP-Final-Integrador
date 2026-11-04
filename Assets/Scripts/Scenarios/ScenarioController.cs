@@ -3,6 +3,7 @@ using DefendAndCollect.Agents;
 using DefendAndCollect.Build;
 using DefendAndCollect.Grid;
 using DefendAndCollect.Pathfinding;
+using DefendAndCollect.Waves;
 using UnityEngine;
 
 namespace DefendAndCollect.Scenarios
@@ -22,6 +23,7 @@ namespace DefendAndCollect.Scenarios
         private FsmDemoBootstrap demo;
         private BuildController buildController;
         private PathfindingDebugController pathfindingController;
+        private WaveController waveController;
         private int currentIndex = -1;
         private string statusMessage = "F1/F2/F3 o los botones cambian de plantilla.";
 
@@ -43,6 +45,12 @@ namespace DefendAndCollect.Scenarios
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ApplyScenario(currentIndex >= 0 ? currentIndex : initialScenario);
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.F1))
             {
                 ApplyScenario(0);
@@ -96,12 +104,17 @@ namespace DefendAndCollect.Scenarios
 
             if (demo != null)
             {
-                demo.ConfigureScenario(definition);
+                demo.ConfigureScenario(definition, waveController == null);
             }
 
             if (pathfindingController != null)
             {
                 pathfindingController.Rebind(grid);
+            }
+
+            if (waveController != null)
+            {
+                waveController.StartMatch(definition.EnemySpawns);
             }
 
             currentIndex = index;
@@ -135,6 +148,12 @@ namespace DefendAndCollect.Scenarios
             if (pathfindingController == null)
             {
                 pathfindingController = FindAnyObjectByType<PathfindingDebugController>();
+            }
+
+            waveController = GetComponent<WaveController>();
+            if (waveController == null)
+            {
+                waveController = FindAnyObjectByType<WaveController>();
             }
         }
 

@@ -30,6 +30,7 @@ namespace DefendAndCollect.Agents
 
         private StateMachine<EnemyState, EnemyAgent> stateMachine;
         private AllyAgent target;
+        private Vector2Int? objectiveCell;
         private float stateElapsed;
         private float repathElapsed;
         private float perceptionElapsed;
@@ -44,6 +45,8 @@ namespace DefendAndCollect.Agents
 
         public IReadOnlyList<AllyAgent> Allies => allies;
 
+        public Vector2Int? ObjectiveCell => objectiveCell;
+
         public int AttackCount { get; private set; }
 
         public void Configure(
@@ -54,8 +57,10 @@ namespace DefendAndCollect.Agents
             PathfindingAlgorithm algorithm = PathfindingAlgorithm.AStar,
             NavigationMode mode = NavigationMode.UniformCost,
             Color? color = null,
-            float detectionRadius = 6f)
+            float detectionRadius = 6f,
+            Vector2Int? objective = null)
         {
+            objectiveCell = objective;
             allies.Clear();
 
             if (allyTargets != null)
@@ -142,6 +147,28 @@ namespace DefendAndCollect.Agents
             MoveTo(target.Cell);
         }
 
+        private bool TryAdvanceToObjective()
+        {
+            if (!objectiveCell.HasValue)
+            {
+                return false;
+            }
+
+            Vector2Int objective = objectiveCell.Value;
+
+            if (Cell == objective)
+            {
+                return true;
+            }
+
+            if (IsMoving && DestinationCell == objective)
+            {
+                return true;
+            }
+
+            return MoveTo(objective);
+        }
+
         private void AttackTarget()
         {
             if (!HasValidTarget)
@@ -220,6 +247,11 @@ namespace DefendAndCollect.Agents
 
                 if (!context.HasValidTarget)
                 {
+                    if (context.TryAdvanceToObjective())
+                    {
+                        return;
+                    }
+
                     if (context.stateElapsed >= SeekDuration)
                     {
                         context.TransitionTo(EnemyState.Idle);

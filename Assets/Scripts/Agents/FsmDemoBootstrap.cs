@@ -52,6 +52,7 @@ namespace DefendAndCollect.Agents
 
         private readonly List<AllyAgent> allies = new List<AllyAgent>();
         private readonly List<EnemyAgent> enemies = new List<EnemyAgent>();
+        private readonly List<Vector2Int> enemySpawnCells = new List<Vector2Int>();
         private readonly List<ResourceNode> resources = new List<ResourceNode>();
         private readonly List<GameObject> resourceMarkers = new List<GameObject>();
         private readonly List<string> recentTransitions = new List<string>();
@@ -60,6 +61,7 @@ namespace DefendAndCollect.Agents
         private GameGrid grid;
         private GameObject demoRoot;
         private ScenarioDefinition scenarioDefinition;
+        private bool spawnInitialEnemies = true;
         private Vector2Int deposit = DefaultDepositCell;
         private float detectionRadius = DefaultDetectionRadius;
         private PathfindingDebugController navigationController;
@@ -82,6 +84,10 @@ namespace DefendAndCollect.Agents
 
         public ScenarioDefinition ScenarioDefinition => scenarioDefinition;
 
+        public GameGrid Grid => grid;
+
+        public IReadOnlyList<Vector2Int> EnemySpawnCells => enemySpawnCells;
+
         private void Start()
         {
             if (scenarioDefinition == null)
@@ -92,11 +98,6 @@ namespace DefendAndCollect.Agents
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.R))
-            {
-                BuildDemo();
-            }
-
             RefreshResourceMarkers();
             RefreshCarryTint();
         }
@@ -106,9 +107,10 @@ namespace DefendAndCollect.Agents
             UnbindNavigationController();
         }
 
-        public void ConfigureScenario(ScenarioDefinition definition)
+        public void ConfigureScenario(ScenarioDefinition definition, bool spawnEnemies = true)
         {
             scenarioDefinition = definition ?? throw new ArgumentNullException(nameof(definition));
+            spawnInitialEnemies = spawnEnemies;
             BuildDemo();
         }
 
@@ -162,10 +164,45 @@ namespace DefendAndCollect.Agents
                 CreateAlly($"Aliado {i + 1}", allyStarts[i]);
             }
 
+            enemySpawnCells.Clear();
+
             for (int i = 0; i < enemyStarts.Count; i++)
             {
-                CreateEnemy($"Enemigo {i + 1}", enemyStarts[i]);
+                enemySpawnCells.Add(enemyStarts[i]);
+
+                if (spawnInitialEnemies)
+                {
+                    CreateEnemy($"Enemigo {i + 1}", enemyStarts[i]);
+                }
             }
+        }
+
+        public EnemyAgent SpawnEnemy(Vector2Int cell)
+        {
+            if (grid == null || !grid.IsPassable(cell))
+            {
+                return null;
+            }
+
+            return CreateEnemy($"Enemigo {enemies.Count + 1}", cell);
+        }
+
+        public void ClearEnemies()
+        {
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                EnemyAgent enemy = enemies[i];
+
+                if (enemy == null)
+                {
+                    continue;
+                }
+
+                enemy.StateChanged -= HandleStateChanged;
+                Destroy(enemy.gameObject);
+            }
+
+            enemies.Clear();
         }
 
         private void ClearPlayerStructures()
@@ -204,7 +241,7 @@ namespace DefendAndCollect.Agents
             allies.Add(ally);
         }
 
-        private void CreateEnemy(string name, Vector2Int startCell)
+        private EnemyAgent CreateEnemy(string name, Vector2Int startCell)
         {
             GameObject agentObject = new GameObject(name);
             agentObject.transform.SetParent(demoRoot.transform, false);
@@ -219,9 +256,11 @@ namespace DefendAndCollect.Agents
                 activeAlgorithm,
                 activeNavigationMode,
                 EnemyColor,
-                detectionRadius);
+                detectionRadius,
+                deposit);
 
             enemies.Add(enemy);
+            return enemy;
         }
 
         private void BindNavigationController()
@@ -586,7 +625,7 @@ namespace DefendAndCollect.Agents
             }
 
             GUILayout.Label("Cambiá BFS/A* y costes en el panel izquierdo: afecta a los NPCs.");
-            GUILayout.Label("R: reiniciar la demo");
+            GUILayout.Label("R: reiniciar la partida");
 
             GUILayout.EndArea();
         }

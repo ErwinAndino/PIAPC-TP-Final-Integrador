@@ -78,6 +78,11 @@ namespace DefendAndCollect.Tests.PlayMode
                 Assert.That(controller.ApplyScenario(index), Is.True);
                 yield return null;
 
+                for (int enemyIndex = 0; enemyIndex < demo.Enemies.Count; enemyIndex++)
+                {
+                    demo.Enemies[enemyIndex].enabled = false;
+                }
+
                 AllyAgent ally = demo.Allies[0];
                 ally.enabled = false;
 
