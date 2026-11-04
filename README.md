@@ -5,6 +5,10 @@ Trabajo final para la cátedra de Programación de Inteligencia Artificial y Pat
 Prototipo **Defend & Collect**: tower-defense ligero 2D top-down sobre grid, hecho en Unity (C#).
 Aliados recolectan recursos, enemigos los atacan y el jugador coloca muros/torres en tiempo real para bloquear caminos y proteger a los aliados.
 
+## Presentación
+
+- [docs/presentacion.html](docs/presentacion.html): diapositivas del trabajo. Se abre en el navegador; flechas para navegar.
+
 ## Documentación
 
 - [GDD.md](GDD.md): diseño general del prototipo.
