@@ -1,4 +1,5 @@
 using System.Linq;
+using DefendAndCollect.Agents;
 using DefendAndCollect.Grid;
 using DefendAndCollect.Pathfinding;
 using NUnit.Framework;
@@ -21,6 +22,7 @@ namespace DefendAndCollect.Tests.EditMode
 
                 Assert.That(gameRoot.GetComponent<GridBootstrap>(), Is.Not.Null);
                 Assert.That(gameRoot.GetComponent<PathfindingDebugController>(), Is.Not.Null);
+                Assert.That(gameRoot.GetComponent<FsmDemoBootstrap>(), Is.Not.Null);
             }
             finally
             {
