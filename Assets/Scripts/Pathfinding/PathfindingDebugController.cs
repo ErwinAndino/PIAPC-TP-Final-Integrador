@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DefendAndCollect.Build;
 using DefendAndCollect.Grid;
 using UnityEngine;
 
@@ -21,7 +22,9 @@ namespace DefendAndCollect.Pathfinding
         private readonly Rect panelRect = new Rect(12f, 40f, 430f, 330f);
         private readonly List<GameObject> markers = new List<GameObject>();
 
+        private GridBootstrap gridBootstrap;
         private GridView gridView;
+        private BuildController buildController;
         private GameGrid grid;
         private Vector2Int? startCell;
         private Vector2Int? endCell;
@@ -36,19 +39,20 @@ namespace DefendAndCollect.Pathfinding
 
         private void Start()
         {
-            GridBootstrap bootstrap = GetComponent<GridBootstrap>();
-            if (bootstrap == null)
+            gridBootstrap = GetComponent<GridBootstrap>();
+            if (gridBootstrap == null)
             {
-                bootstrap = FindAnyObjectByType<GridBootstrap>();
+                gridBootstrap = FindAnyObjectByType<GridBootstrap>();
             }
 
-            if (bootstrap == null || bootstrap.Grid == null)
+            if (gridBootstrap == null || gridBootstrap.Grid == null)
             {
                 return;
             }
 
-            grid = bootstrap.Grid;
-            gridView = bootstrap.GetComponent<GridView>();
+            grid = gridBootstrap.Grid;
+            gridView = gridBootstrap.GetComponent<GridView>();
+            buildController = FindAnyObjectByType<BuildController>();
             startCell = FindPassableCell(true);
             endCell = FindPassableCell(false);
             RecalculatePath();
@@ -57,6 +61,11 @@ namespace DefendAndCollect.Pathfinding
         private void Update()
         {
             if (grid == null || IsPointerOverPanel())
+            {
+                return;
+            }
+
+            if (buildController != null && buildController.IsBuildMode)
             {
                 return;
             }
@@ -181,6 +190,25 @@ namespace DefendAndCollect.Pathfinding
         private void NotifyNavigationChanged()
         {
             NavigationChanged?.Invoke(algorithm, navigationMode);
+        }
+
+        public void Rebind(GameGrid newGrid)
+        {
+            if (newGrid == null)
+            {
+                return;
+            }
+
+            grid = newGrid;
+
+            if (gridBootstrap != null)
+            {
+                gridView = gridBootstrap.GetComponent<GridView>();
+            }
+
+            startCell = FindPassableCell(true);
+            endCell = FindPassableCell(false);
+            RecalculatePath();
         }
 
         private void ClearEndpoints()

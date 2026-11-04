@@ -14,8 +14,8 @@ Cada spec es un archivo independiente en este directorio; el orden sugerido resp
 | 005 | [Percepción y objetivos](spec-005-percepcion-objetivos.md) | Detección por radio y priorización | 004 | Hecha |
 | 006 | [Aliados: recolección](spec-006-aliados-recoleccion.md) | Buscar, recolectar y transportar | 003, 004, 005 | Hecha |
 | 007 | [Enemigos: ataque](spec-007-enemigos-ataque.md) | Buscar, perseguir y atacar | 003, 004, 005 | Hecha |
-| 008 | [Construcciones dinámicas](spec-008-construcciones-dinamicas.md) | Colocar muros/torres y recalcular rutas | 002, 004 | Pendiente |
-| 009 | [Escenarios con plantillas](spec-009-escenarios-plantillas.md) | 3 layouts jugables | 001, 003 | Pendiente |
+| 008 | [Construcciones dinámicas](spec-008-construcciones-dinamicas.md) | Colocar muros/torres y recalcular rutas | 002, 004 | Hecha |
+| 009 | [Escenarios con plantillas](spec-009-escenarios-plantillas.md) | 3 layouts jugables | 001, 003 | Hecha |
 | 010 | [Oleadas, victoria y derrota](spec-010-oleadas-victoria-derrota.md) | Flujo de partida | 006, 007, 008, 009 | Pendiente |
 
 Estados posibles: `Pendiente`, `En curso`, `Bloqueada`, `Hecha`.

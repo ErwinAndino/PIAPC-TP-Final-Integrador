@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
+using DefendAndCollect.Build;
 using DefendAndCollect.Core;
 using DefendAndCollect.Grid;
 using DefendAndCollect.Pathfinding;
+using DefendAndCollect.Scenarios;
 using DefendAndCollect.World;
 using UnityEngine;
 
@@ -22,9 +25,9 @@ namespace DefendAndCollect.Agents
         private static readonly Color DepositColor = new Color(0.3f, 0.7f, 1f, 1f);
         private static readonly Color ResourceColor = new Color(1f, 0.85f, 0.25f, 1f);
 
-        private static readonly Vector2Int DepositCell = new Vector2Int(4, 4);
+        private static readonly Vector2Int DefaultDepositCell = new Vector2Int(4, 4);
 
-        private static readonly Vector2Int[] ResourceCells =
+        private static readonly Vector2Int[] DefaultResourceCells =
         {
             new Vector2Int(1, 1),
             new Vector2Int(8, 2),
@@ -32,6 +35,19 @@ namespace DefendAndCollect.Agents
             new Vector2Int(8, 7),
             new Vector2Int(4, 9),
             new Vector2Int(1, 8)
+        };
+
+        private static readonly Vector2Int[] DefaultAllyStarts =
+        {
+            new Vector2Int(2, 3),
+            new Vector2Int(5, 3)
+        };
+
+        private static readonly Vector2Int[] DefaultEnemyStarts =
+        {
+            new Vector2Int(16, 16),
+            new Vector2Int(20, 20),
+            new Vector2Int(24, 16)
         };
 
         private readonly List<AllyAgent> allies = new List<AllyAgent>();
@@ -43,6 +59,8 @@ namespace DefendAndCollect.Agents
 
         private GameGrid grid;
         private GameObject demoRoot;
+        private ScenarioDefinition scenarioDefinition;
+        private Vector2Int deposit = DefaultDepositCell;
         private float detectionRadius = DefaultDetectionRadius;
         private PathfindingDebugController navigationController;
         private PathfindingAlgorithm activeAlgorithm = PathfindingAlgorithm.AStar;
@@ -60,9 +78,16 @@ namespace DefendAndCollect.Agents
 
         public float DetectionRadius => detectionRadius;
 
+        public Vector2Int Deposit => deposit;
+
+        public ScenarioDefinition ScenarioDefinition => scenarioDefinition;
+
         private void Start()
         {
-            BuildDemo();
+            if (scenarioDefinition == null)
+            {
+                BuildDemo();
+            }
         }
 
         private void Update()
@@ -81,8 +106,15 @@ namespace DefendAndCollect.Agents
             UnbindNavigationController();
         }
 
+        public void ConfigureScenario(ScenarioDefinition definition)
+        {
+            scenarioDefinition = definition ?? throw new ArgumentNullException(nameof(definition));
+            BuildDemo();
+        }
+
         public void BuildDemo()
         {
+            ClearPlayerStructures();
             ClearDemo();
 
             GridBootstrap bootstrap = GetComponent<GridBootstrap>();
@@ -97,43 +129,57 @@ namespace DefendAndCollect.Agents
             }
 
             grid = bootstrap.Grid;
-            detectionRadius = DefaultDetectionRadius;
+            detectionRadius = scenarioDefinition != null ? scenarioDefinition.DetectionRadius : DefaultDetectionRadius;
+            deposit = scenarioDefinition != null ? scenarioDefinition.Deposit : DefaultDepositCell;
+
+            IReadOnlyList<Vector2Int> resourceCells = scenarioDefinition != null
+                ? scenarioDefinition.Resources
+                : DefaultResourceCells;
+            IReadOnlyList<Vector2Int> allyStarts = scenarioDefinition != null
+                ? scenarioDefinition.AllySpawns
+                : DefaultAllyStarts;
+            IReadOnlyList<Vector2Int> enemyStarts = scenarioDefinition != null
+                ? scenarioDefinition.EnemySpawns
+                : DefaultEnemyStarts;
+
             BindNavigationController();
             demoRoot = new GameObject("FsmDemo");
             demoRoot.transform.SetParent(transform, false);
 
-            CreateMarker("Deposito", DepositCell, DepositColor, 1.2f);
+            CreateMarker("Deposito", deposit, DepositColor, 1.2f);
 
-            for (int i = 0; i < ResourceCells.Length; i++)
+            for (int i = 0; i < resourceCells.Count; i++)
             {
-                ResourceNode node = new ResourceNode(ResourceCells[i]);
+                ResourceNode node = new ResourceNode(resourceCells[i]);
                 resources.Add(node);
 
                 GameObject marker = CreateMarker($"Recurso {i + 1}", node.Cell, ResourceColor, 0.7f);
                 resourceMarkers.Add(marker);
             }
 
-            Vector2Int[] allyStarts =
-            {
-                new Vector2Int(2, 3),
-                new Vector2Int(5, 3)
-            };
-
-            for (int i = 0; i < allyStarts.Length; i++)
+            for (int i = 0; i < allyStarts.Count; i++)
             {
                 CreateAlly($"Aliado {i + 1}", allyStarts[i]);
             }
 
-            Vector2Int[] enemyStarts =
-            {
-                new Vector2Int(16, 16),
-                new Vector2Int(20, 20),
-                new Vector2Int(24, 16)
-            };
-
-            for (int i = 0; i < enemyStarts.Length; i++)
+            for (int i = 0; i < enemyStarts.Count; i++)
             {
                 CreateEnemy($"Enemigo {i + 1}", enemyStarts[i]);
+            }
+        }
+
+        private void ClearPlayerStructures()
+        {
+            BuildController buildController = GetComponent<BuildController>();
+
+            if (buildController == null)
+            {
+                buildController = FindAnyObjectByType<BuildController>();
+            }
+
+            if (buildController != null)
+            {
+                buildController.ClearStructures();
             }
         }
 
@@ -148,7 +194,7 @@ namespace DefendAndCollect.Agents
                 grid,
                 startCell,
                 resources,
-                DepositCell,
+                deposit,
                 AllySpeed,
                 activeAlgorithm,
                 activeNavigationMode,

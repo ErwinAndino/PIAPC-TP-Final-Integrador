@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace DefendAndCollect.Grid
@@ -17,7 +18,17 @@ namespace DefendAndCollect.Grid
 
         public void Build()
         {
-            Grid = DefaultGridLayout.Create();
+            Build(DefaultGridLayout.Create());
+        }
+
+        public void Build(GameGrid grid)
+        {
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            Grid = grid;
 
             GridView gridView = GetComponent<GridView>();
             if (gridView == null)
