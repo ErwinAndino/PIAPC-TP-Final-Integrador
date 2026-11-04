@@ -32,13 +32,19 @@ namespace DefendAndCollect.Agents
 
         public bool IsConfigured => Grid != null;
 
-        public bool IsTargetable => gameObject.activeInHierarchy && IsConfigured;
+        public bool IsTargetable => gameObject.activeInHierarchy && IsConfigured && IsAlive;
 
         public PathfindingAlgorithm ActiveAlgorithm => pathfindingAlgorithm;
 
         public NavigationMode ActiveNavigationMode => navigationMode;
 
         public int RepathCount { get; private set; }
+
+        public const float MaxHealthValue = 100f;
+
+        public float Health { get; private set; } = MaxHealthValue;
+
+        public bool IsAlive => Health > 0f;
 
         public float DetectionRadius
         {
@@ -80,6 +86,7 @@ namespace DefendAndCollect.Agents
             DetectionRadius = detectionRadius;
             pathfindingAlgorithm = algorithm;
             navigationMode = mode;
+            Health = MaxHealthValue;
             Grid.Changed += HandleGridChanged;
             transform.position = grid.CellToWorld(startCell);
 
@@ -98,7 +105,7 @@ namespace DefendAndCollect.Agents
 
         public bool MoveTo(Vector2Int destination)
         {
-            if (Grid == null)
+            if (Grid == null || !IsAlive)
             {
                 return false;
             }
@@ -133,6 +140,42 @@ namespace DefendAndCollect.Agents
             }
         }
 
+        public void TakeDamage(float amount)
+        {
+            if (!IsConfigured || !IsAlive || amount <= 0f)
+            {
+                return;
+            }
+
+            Health = Mathf.Max(0f, Health - amount);
+
+            if (Health <= 0f)
+            {
+                HandleDeath();
+            }
+        }
+
+        public void RestoreHealth()
+        {
+            bool wasDead = !IsAlive;
+            Health = MaxHealthValue;
+
+            if (spriteRenderer == null)
+            {
+                spriteRenderer = GetComponent<SpriteRenderer>();
+            }
+
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.enabled = true;
+            }
+
+            if (wasDead)
+            {
+                OnRevived();
+            }
+        }
+
         public void Stop()
         {
             path.Clear();
@@ -142,7 +185,7 @@ namespace DefendAndCollect.Agents
 
         public void Advance(float deltaTime)
         {
-            if (Grid == null || deltaTime <= 0f)
+            if (Grid == null || deltaTime <= 0f || !IsAlive)
             {
                 return;
             }
@@ -155,9 +198,28 @@ namespace DefendAndCollect.Agents
 
         protected abstract void TickBehavior(float deltaTime);
 
+        protected virtual void OnDied()
+        {
+        }
+
+        protected virtual void OnRevived()
+        {
+        }
+
         protected void NotifyStateChanged()
         {
             StateChanged?.Invoke(this);
+        }
+
+        private void HandleDeath()
+        {
+            Stop();
+            OnDied();
+
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.enabled = false;
+            }
         }
 
         private void OnDestroy()

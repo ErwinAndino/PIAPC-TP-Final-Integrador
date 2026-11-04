@@ -24,6 +24,8 @@ namespace DefendAndCollect.Agents
         private const float PerceptionInterval = 0.25f;
         private const int AttackRange = 1;
 
+        public const float DamagePerAttack = 20f;
+
         private readonly List<AllyAgent> allies = new List<AllyAgent>();
 
         private StateMachine<EnemyState, EnemyAgent> stateMachine;
@@ -138,6 +140,16 @@ namespace DefendAndCollect.Agents
             }
 
             MoveTo(target.Cell);
+        }
+
+        private void AttackTarget()
+        {
+            if (!HasValidTarget)
+            {
+                return;
+            }
+
+            target.TakeDamage(DamagePerAttack);
         }
 
         private sealed class IdleState : IFsmState<EnemyState, EnemyAgent>
@@ -296,6 +308,7 @@ namespace DefendAndCollect.Agents
                 }
 
                 context.AttackCount++;
+                context.AttackTarget();
                 context.TransitionTo(EnemyState.SeekAlly);
             }
         }

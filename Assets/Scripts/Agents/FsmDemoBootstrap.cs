@@ -126,9 +126,9 @@ namespace DefendAndCollect.Agents
 
             Vector2Int[] enemyStarts =
             {
-                new Vector2Int(25, 25),
-                new Vector2Int(26, 28),
-                new Vector2Int(27, 24)
+                new Vector2Int(16, 16),
+                new Vector2Int(20, 20),
+                new Vector2Int(24, 16)
             };
 
             for (int i = 0; i < enemyStarts.Length; i++)
@@ -293,8 +293,26 @@ namespace DefendAndCollect.Agents
                 return;
             }
 
-            GameObject allyObject = allies[allyIndex].gameObject;
-            allyObject.SetActive(!allyObject.activeSelf);
+            AllyAgent ally = allies[allyIndex];
+
+            if (ally.IsAlive)
+            {
+                ally.TakeDamage(NpcAgent.MaxHealthValue);
+                return;
+            }
+
+            ally.RestoreHealth();
+        }
+
+        private void HealAllies()
+        {
+            for (int i = 0; i < allies.Count; i++)
+            {
+                if (allies[i] != null)
+                {
+                    allies[i].RestoreHealth();
+                }
+            }
         }
 
         private void RefreshResourceMarkers()
@@ -416,13 +434,13 @@ namespace DefendAndCollect.Agents
                 return;
             }
 
-            float panelHeight = 190f + (((allies.Count * 2) + enemies.Count + MaxTransitions) * 20f);
+            float panelHeight = 230f + (((allies.Count * 2) + enemies.Count + MaxTransitions) * 20f);
             Rect panelRect = new Rect(455f, 40f, 470f, Mathf.Min(panelHeight, Screen.height - 52f));
 
             GUI.Box(panelRect, GUIContent.none);
             GUILayout.BeginArea(new Rect(panelRect.x + 8f, panelRect.y + 6f, panelRect.width - 16f, panelRect.height - 12f));
 
-            GUILayout.Label("FSM (004) + percepción (005) + recolección (006)");
+            GUILayout.Label("FSM (004) + percepción (005) + recolección (006) + ataque (007)");
             GUILayout.Label($"Algoritmo: {AlgorithmName} | Navegación: {NavigationModeName}");
             GUILayout.Label($"Radio: {detectionRadius:0.0} | Recursos: {CountAvailableResources()} | Entregas: {TotalDelivered()}");
 
@@ -445,7 +463,9 @@ namespace DefendAndCollect.Agents
                     continue;
                 }
 
-                string state = ally.IsTargetable ? ally.CurrentStateName : "Fuera de combate";
+                string state = ally.IsAlive
+                    ? (ally.IsTargetable ? ally.CurrentStateName : "Fuera de combate")
+                    : "Muerto";
                 string carry = ally.IsCarrying ? " (cargando)" : string.Empty;
                 string target = "sin recurso";
 
@@ -455,8 +475,8 @@ namespace DefendAndCollect.Agents
                     target = $"recurso ({ally.CurrentResource.Cell.x},{ally.CurrentResource.Cell.y}) d={distance:0.0}";
                 }
 
-                GUILayout.Label($"{ally.name}: {state}{carry} | entregas {ally.DeliveredCount} | recálculos {ally.RepathCount}");
-                GUILayout.Label($"  Objetivo: {target}");
+                GUILayout.Label($"{ally.name}: {state}{carry} | vida {ally.Health:0}/{NpcAgent.MaxHealthValue:0}");
+                GUILayout.Label($"  Entregas {ally.DeliveredCount} | recálculos {ally.RepathCount} | objetivo: {target}");
             }
 
             for (int i = 0; i < enemies.Count; i++)
@@ -473,7 +493,7 @@ namespace DefendAndCollect.Agents
                 if (enemy.Target != null && enemy.Target.IsTargetable)
                 {
                     float distance = Perception.Distance(enemy.Cell, enemy.Target.Cell);
-                    target = $"{enemy.Target.name} d={distance:0.0}";
+                    target = $"{enemy.Target.name} d={distance:0.0} vida {enemy.Target.Health:0}";
                 }
 
                 GUILayout.Label($"{enemy.name}: {enemy.CurrentStateName} | {target}");
@@ -506,6 +526,11 @@ namespace DefendAndCollect.Agents
             }
 
             GUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Curar aliados"))
+            {
+                HealAllies();
+            }
 
             GUILayout.Label("Transiciones recientes:");
 

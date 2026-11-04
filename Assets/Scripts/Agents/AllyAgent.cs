@@ -204,6 +204,11 @@ namespace DefendAndCollect.Agents
             return MoveTo(depositCell);
         }
 
+        protected override void OnDied()
+        {
+            currentResource = null;
+        }
+
         private sealed class IdleState : IFsmState<AllyState, AllyAgent>
         {
             private float elapsed;
