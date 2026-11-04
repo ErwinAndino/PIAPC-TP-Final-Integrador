@@ -187,6 +187,45 @@ namespace DefendAndCollect.Tests.EditMode
         }
 
         [Test]
+        public void Changed_FiresAndVersionIncrements_OnlyWhenCellChanges()
+        {
+            GameGrid grid = new GameGrid(4, 4);
+            Vector2Int cell = new Vector2Int(1, 2);
+            int notifications = 0;
+            grid.Changed += () => notifications++;
+
+            grid.SetBlocked(cell, true);
+
+            Assert.That(grid.Version, Is.EqualTo(1));
+            Assert.That(notifications, Is.EqualTo(1));
+
+            grid.SetBlocked(cell, true);
+
+            Assert.That(grid.Version, Is.EqualTo(1));
+            Assert.That(notifications, Is.EqualTo(1));
+
+            grid.SetBlocked(cell, false);
+
+            Assert.That(grid.Version, Is.EqualTo(2));
+            Assert.That(notifications, Is.EqualTo(2));
+
+            grid.SetTerrain(cell, TerrainType.Slow);
+
+            Assert.That(grid.Version, Is.EqualTo(3));
+            Assert.That(notifications, Is.EqualTo(3));
+
+            grid.SetTerrain(cell, TerrainType.Slow);
+
+            Assert.That(grid.Version, Is.EqualTo(3));
+            Assert.That(notifications, Is.EqualTo(3));
+
+            grid.SetTerrain(cell, TerrainType.Normal);
+
+            Assert.That(grid.Version, Is.EqualTo(4));
+            Assert.That(notifications, Is.EqualTo(4));
+        }
+
+        [Test]
         public void WorldToCell_MapsTilesAndHandlesEdges()
         {
             GameGrid grid = new GameGrid(30, 30);

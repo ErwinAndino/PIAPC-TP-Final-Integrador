@@ -24,6 +24,7 @@ namespace DefendAndCollect.Agents
         private const float PerceptionInterval = 0.25f;
 
         private readonly List<ResourceNode> resources = new List<ResourceNode>();
+        private readonly List<ResourceNode> candidateBuffer = new List<ResourceNode>();
 
         private StateMachine<AllyState, AllyAgent> stateMachine;
         private ResourceNode currentResource;
@@ -46,7 +47,11 @@ namespace DefendAndCollect.Agents
 
         public bool HasResource => currentResource != null && currentResource.IsAvailable;
 
+        public bool IsCarrying => CurrentState == AllyState.TransportToDeposit;
+
         public int CollectCount { get; private set; }
+
+        public int DeliveredCount { get; private set; }
 
         public void Configure(
             GameGrid grid,
@@ -123,32 +128,69 @@ namespace DefendAndCollect.Agents
 
         private bool TrySelectResource()
         {
-            ResourceNode candidate = Perception.FindNearest(
-                Cell,
-                resources,
-                node => node.Cell,
-                DetectionRadius,
-                node => node.IsAvailable && Grid != null && Grid.IsPassable(node.Cell));
+            currentResource = null;
 
-            if (candidate == null)
+            if (Grid == null)
             {
-                currentResource = null;
                 return false;
             }
 
-            if (!MoveTo(candidate.Cell))
+            candidateBuffer.Clear();
+
+            for (int i = 0; i < resources.Count; i++)
             {
-                currentResource = null;
-                return false;
+                ResourceNode node = resources[i];
+
+                if (node == null || !node.IsAvailable || !Grid.IsPassable(node.Cell))
+                {
+                    continue;
+                }
+
+                if (!Perception.IsWithinRadius(Cell, node.Cell, DetectionRadius))
+                {
+                    continue;
+                }
+
+                candidateBuffer.Add(node);
             }
 
-            currentResource = candidate;
-            return true;
+            while (candidateBuffer.Count > 0)
+            {
+                int nearestIndex = 0;
+                float nearestDistance = Perception.Distance(Cell, candidateBuffer[0].Cell);
+
+                for (int i = 1; i < candidateBuffer.Count; i++)
+                {
+                    float distance = Perception.Distance(Cell, candidateBuffer[i].Cell);
+
+                    if (distance < nearestDistance)
+                    {
+                        nearestDistance = distance;
+                        nearestIndex = i;
+                    }
+                }
+
+                ResourceNode candidate = candidateBuffer[nearestIndex];
+                candidateBuffer.RemoveAt(nearestIndex);
+
+                if (MoveTo(candidate.Cell))
+                {
+                    currentResource = candidate;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void DropInvalidResource()
         {
-            if (currentResource == null || currentResource.IsAvailable)
+            if (currentResource == null)
+            {
+                return;
+            }
+
+            if (currentResource.IsAvailable && Grid != null && Grid.IsPassable(currentResource.Cell))
             {
                 return;
             }
@@ -316,6 +358,7 @@ namespace DefendAndCollect.Agents
 
                 if (context.HasArrived)
                 {
+                    context.DeliveredCount++;
                     context.TransitionTo(AllyState.Idle);
                     return;
                 }

@@ -18,6 +18,7 @@ namespace DefendAndCollect.Agents
         private float detectionRadius = 6f;
         private PathfindingAlgorithm pathfindingAlgorithm = PathfindingAlgorithm.AStar;
         private NavigationMode navigationMode = NavigationMode.UniformCost;
+        private SpriteRenderer spriteRenderer;
 
         public GameGrid Grid { get; private set; }
 
@@ -32,6 +33,12 @@ namespace DefendAndCollect.Agents
         public bool IsConfigured => Grid != null;
 
         public bool IsTargetable => gameObject.activeInHierarchy && IsConfigured;
+
+        public PathfindingAlgorithm ActiveAlgorithm => pathfindingAlgorithm;
+
+        public NavigationMode ActiveNavigationMode => navigationMode;
+
+        public int RepathCount { get; private set; }
 
         public float DetectionRadius
         {
@@ -62,23 +69,29 @@ namespace DefendAndCollect.Agents
                 throw new ArgumentOutOfRangeException(nameof(startCell), startCell, "Start cell must be passable.");
             }
 
+            if (Grid != null)
+            {
+                Grid.Changed -= HandleGridChanged;
+            }
+
             Grid = grid;
             Cell = startCell;
             moveSpeed = Mathf.Max(0.1f, speed);
             DetectionRadius = detectionRadius;
             pathfindingAlgorithm = algorithm;
             navigationMode = mode;
+            Grid.Changed += HandleGridChanged;
             transform.position = grid.CellToWorld(startCell);
 
-            SpriteRenderer renderer = GetComponent<SpriteRenderer>();
-            if (renderer == null)
+            spriteRenderer = GetComponent<SpriteRenderer>();
+            if (spriteRenderer == null)
             {
-                renderer = gameObject.AddComponent<SpriteRenderer>();
+                spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
             }
 
-            renderer.sprite = PrimitiveSprite.Get();
-            renderer.color = color ?? Color.white;
-            renderer.sortingOrder = 10;
+            spriteRenderer.sprite = PrimitiveSprite.Get();
+            spriteRenderer.color = color ?? Color.white;
+            spriteRenderer.sortingOrder = 10;
 
             OnConfigured();
         }
@@ -90,33 +103,34 @@ namespace DefendAndCollect.Agents
                 return false;
             }
 
-            hasDestination = true;
             destinationCell = destination;
-            path.Clear();
-            pathIndex = 0;
+            hasDestination = true;
+            return BuildPath();
+        }
 
-            if (!Grid.IsPassable(destination))
+        public void SetNavigation(PathfindingAlgorithm algorithm, NavigationMode mode)
+        {
+            if (pathfindingAlgorithm == algorithm && navigationMode == mode)
             {
-                hasDestination = false;
-                return false;
+                return;
             }
 
-            IPathfinder pathfinder = PathfinderFactory.Create(pathfindingAlgorithm);
-            IReadOnlyList<Vector2Int> nextPath = pathfinder.GetPath(Grid, Cell, destination, navigationMode);
+            pathfindingAlgorithm = algorithm;
+            navigationMode = mode;
+            RepathToDestination();
+        }
 
-            if (nextPath.Count == 0)
+        public void SetVisualColor(Color color)
+        {
+            if (spriteRenderer == null)
             {
-                hasDestination = false;
-                return false;
+                spriteRenderer = GetComponent<SpriteRenderer>();
             }
 
-            for (int i = 0; i < nextPath.Count; i++)
+            if (spriteRenderer != null)
             {
-                path.Add(nextPath[i]);
+                spriteRenderer.color = color;
             }
-
-            pathIndex = path.Count > 1 ? 1 : path.Count;
-            return true;
         }
 
         public void Stop()
@@ -144,6 +158,59 @@ namespace DefendAndCollect.Agents
         protected void NotifyStateChanged()
         {
             StateChanged?.Invoke(this);
+        }
+
+        private void OnDestroy()
+        {
+            if (Grid != null)
+            {
+                Grid.Changed -= HandleGridChanged;
+            }
+        }
+
+        private void HandleGridChanged()
+        {
+            RepathToDestination();
+        }
+
+        private void RepathToDestination()
+        {
+            if (!hasDestination)
+            {
+                return;
+            }
+
+            RepathCount++;
+            BuildPath();
+        }
+
+        private bool BuildPath()
+        {
+            path.Clear();
+            pathIndex = 0;
+
+            if (Grid == null || !Grid.IsPassable(destinationCell))
+            {
+                hasDestination = false;
+                return false;
+            }
+
+            IPathfinder pathfinder = PathfinderFactory.Create(pathfindingAlgorithm);
+            IReadOnlyList<Vector2Int> nextPath = pathfinder.GetPath(Grid, Cell, destinationCell, navigationMode);
+
+            if (nextPath.Count == 0)
+            {
+                hasDestination = false;
+                return false;
+            }
+
+            for (int i = 0; i < nextPath.Count; i++)
+            {
+                path.Add(nextPath[i]);
+            }
+
+            pathIndex = path.Count > 1 ? 1 : path.Count;
+            return true;
         }
 
         private void Update()

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using DefendAndCollect.Grid;
 using UnityEngine;
@@ -26,6 +27,12 @@ namespace DefendAndCollect.Pathfinding
         private Vector2Int? endCell;
         private IReadOnlyList<Vector2Int> currentPath = PathfindingSupport.EmptyPath;
         private string statusMessage = "Elegí inicio (clic izquierdo) y fin (clic derecho).";
+
+        public PathfindingAlgorithm ActiveAlgorithm => algorithm;
+
+        public NavigationMode ActiveNavigationMode => navigationMode;
+
+        public event Action<PathfindingAlgorithm, NavigationMode> NavigationChanged;
 
         private void Start()
         {
@@ -157,16 +164,23 @@ namespace DefendAndCollect.Pathfinding
             ? "Costes iguales"
             : "Costes de terreno";
 
-        private void SelectAlgorithm(PathfindingAlgorithm selectedAlgorithm)
+        public void SelectAlgorithm(PathfindingAlgorithm selectedAlgorithm)
         {
             algorithm = selectedAlgorithm;
             RecalculatePath();
+            NotifyNavigationChanged();
         }
 
-        private void SelectNavigationMode(NavigationMode selectedMode)
+        public void SelectNavigationMode(NavigationMode selectedMode)
         {
             navigationMode = selectedMode;
             RecalculatePath();
+            NotifyNavigationChanged();
+        }
+
+        private void NotifyNavigationChanged()
+        {
+            NavigationChanged?.Invoke(algorithm, navigationMode);
         }
 
         private void ClearEndpoints()

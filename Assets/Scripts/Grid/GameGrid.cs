@@ -13,7 +13,11 @@ namespace DefendAndCollect.Grid
 
         public int Height { get; }
 
+        public int Version { get; private set; }
+
         public Vector3 WorldCenter => new Vector3(Width * 0.5f, Height * 0.5f, 0f);
+
+        public event Action Changed;
 
         public GameGrid(int width, int height)
         {
@@ -90,7 +94,14 @@ namespace DefendAndCollect.Grid
                 throw new ArgumentOutOfRangeException(nameof(cell), cell, "Cell is outside the grid.");
             }
 
-            blocked[Index(cell)] = value;
+            int index = Index(cell);
+            if (blocked[index] == value)
+            {
+                return;
+            }
+
+            blocked[index] = value;
+            NotifyChanged();
         }
 
         public TerrainType GetTerrain(Vector2Int cell)
@@ -115,7 +126,14 @@ namespace DefendAndCollect.Grid
                 throw new ArgumentOutOfRangeException(nameof(value), value, "Unknown terrain type.");
             }
 
-            terrain[Index(cell)] = value;
+            int index = Index(cell);
+            if (terrain[index] == value)
+            {
+                return;
+            }
+
+            terrain[index] = value;
+            NotifyChanged();
         }
 
         public Vector3 CellToWorld(Vector2Int cell)
@@ -181,6 +199,12 @@ namespace DefendAndCollect.Grid
         private int Index(Vector2Int cell)
         {
             return cell.y * Width + cell.x;
+        }
+
+        private void NotifyChanged()
+        {
+            Version++;
+            Changed?.Invoke();
         }
     }
 }
