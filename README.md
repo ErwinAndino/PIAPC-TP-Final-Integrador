@@ -8,6 +8,8 @@ Aliados recolectan recursos, enemigos los atacan y el jugador coloca muros/torre
 ## Presentación
 
 - [docs/presentacion.html](docs/presentacion.html): diapositivas del trabajo. Se abre en el navegador; flechas para navegar.
+- https://erwinandino.github.io/PIAPC-TP-Final-Integrador/ link a github pages
+
 
 ## Documentación
 
